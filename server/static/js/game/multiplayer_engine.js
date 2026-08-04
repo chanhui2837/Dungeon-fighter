@@ -5,7 +5,7 @@
 function initSocket() {
     if (window.socket && window.socket.connected) return window.socket;
     const s = io({
-        transports: ['polling'],  // polling only — Render WebSocket 불안정 제거
+        transports: ['polling'],
         reconnection: true,
         reconnectionDelay: 100,
         reconnectionDelayMax: 1000,
@@ -18,7 +18,6 @@ function initSocket() {
         console.log('[DF-MP] socket connected', s.id, 'transport:', s.io.engine.transport.name);
         const currentUser = (window.api && window.api.userData) ? window.api.userData.username : null;
         s.emit('auth', { username: currentUser });
-        if (window._dfRoomCode) s.emit('join_game', { code: window._dfRoomCode });
     });
     s.on('disconnect', (reason) => {
         console.warn('[DF-MP] socket disconnect:', reason);
@@ -32,7 +31,15 @@ function initSocket() {
     s.on('error', (e) => {
         console.warn('[DF-MP] server error:', e);
     });
+
+    // auth_ok를 받으면 window._dfAuthed = true
+    s.on('auth_ok', () => {
+        console.log('[DF-MP] auth_ok received, ready');
+        window._dfAuthed = true;
+    });
+
     window.socket = s;
+    window._dfAuthed = false;
     return window.socket;
 }
 
@@ -51,11 +58,27 @@ function syncGameWithRoom(gameInstance, roomCode, isHost) {
     gameInstance.remoteProjectiles = [];
     gameInstance._syncFrame = 0;
     gameInstance._isHost = !!isHost;
-    gameInstance._syncMode = !isHost;   // 게스트는 몬스터 스폰/웨이브 로직을 직접 돌리지 않음
+    gameInstance._syncMode = !isHost;
 
     if (!window.socket || !window.socket.connected) initSocket();
     const s = window.socket;
-    s.emit('join_game', { code: roomCode });
+
+    // auth가 완료될 때까지 join_game을 대기 (순서 보장)
+    function doJoin() {
+        s.emit('join_game', { code: roomCode });
+    }
+    if (window._dfAuthed) {
+        doJoin();
+    } else {
+        s.once('auth_ok', doJoin);
+        // fallback: 3초 후에도 auth_ok가 없으면 강제 emit
+        setTimeout(() => {
+            if (!window._dfAuthed) {
+                console.warn('[DF-MP] auth_ok timeout — forcing join_game');
+                doJoin();
+            }
+        }, 3000);
+    }
 
     // game_started에서 전달된 all_players 정보로 otherPlayers 초기화
     if (window._dfAllPlayers && window._dfAllPlayers.length > 0) {

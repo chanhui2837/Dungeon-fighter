@@ -870,28 +870,26 @@ def on_connect():
 def on_auth(data=None):
     user_id = None
     username = None
+    user = None
 
-    # 1. 클라이언트가 직접 보낸 username (시크릿 탭 등 세션이 없는 경우 대비)
-    if isinstance(data, dict) and data.get('username'):
-        username = data.get('username')
-        user_obj = User.query.filter_by(username=username).first()
-        if user_obj:
-            user_id = user_obj.id
+    # 1. HTTP 세션 (일반 브라우저) — 가장 확실
+    user_id = session.get('user_id')
+    if user_id:
+        user = db.session.get(User, user_id)
+        if user:
+            username = user.username
             _user_cache[user_id] = username
 
-    # 2. HTTP 세션 (일반 브라우저)
-    if not user_id:
-        user_id = session.get('user_id')
-        if user_id:
-            _user_cache[user_id] = username or ''
+    # 2. 클라이언트가 직접 보낸 username (세션 없는 경우 대비)
+    if not user and isinstance(data, dict) and data.get('username'):
+        username = data.get('username')
+        user = User.query.filter_by(username=username).first()
+        if user:
+            user_id = user.id
+            _user_cache[user_id] = username
 
-    if not user_id:
-        print(f'[SOCKET] auth failed for sid={request.sid}, no user_id')
-        return
-
-    user = db.session.get(User, user_id)
-    if not user:
-        print(f'[SOCKET] auth failed for sid={request.sid}, user_id={user_id}')
+    if not user_id or not user:
+        print(f'[SOCKET] auth failed for sid={request.sid}')
         return
 
     sid_users[request.sid] = user_id
