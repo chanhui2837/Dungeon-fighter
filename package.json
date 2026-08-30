@@ -11,7 +11,7 @@
     "build": "npm run build --workspace=client",
     "build:all": "npm run install:all && npm run build",
     "start": "npm start --workspace=server",
-    "install:all": "npm install && npm install --workspace=client && npm install --workspace=server",
+    "install:all": "npm install --include=dev && npm install --include=dev --workspace=client && npm install --include=dev --workspace=server",
     "loadtest": "node server/src/loadtest.js"
   },
   "engines": {
