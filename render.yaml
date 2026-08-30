@@ -1,18 +1,74 @@
+# Render Blueprint - Dungeon Fighter
+# 두 가지 배포 방식 중 하나 선택:
+# A) 통합 배포 (권장, 무료 플랜 1개 서비스로 클라이언트+서버 함께 서빙)
+# B) 분리 배포 (서버와 클라이언트를 각각 서비스로 분리)
+# 현재 기본은 A) 통합 배포. B를 쓰려면 아래 B 섹션 주석 해제
+
 services:
+  # ============ A) 통합 배포 (권장) ============
   - type: web
     name: dungeon-fighter
-    env: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn server.app:app --bind 0.0.0.0:$PORT --workers 1 --worker-class gthread --threads 8 --timeout 300
-    envVars:
-      - key: SECRET_KEY
-        generateValue: true
-      - key: DATABASE_URL
-        fromDatabase:
-          name: dungeon-fighter-db
-          property: connectionString
-
-databases:
-  - name: dungeon-fighter-db
-    databaseName: dungeon_fighter
+    env: node
     plan: free
+    region: singapore   # 가까운 리전: singapore / oregon / frankfurt 중 선택
+    rootDir: .
+    # 루트에서 워크스페이스 전체 설치 + 클라이언트 빌드
+    buildCommand: npm run install:all && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: false  # git push 시 자동 배포 원하면 true로 변경
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: 22.12.0
+      - key: MONGODB_URI
+        sync: false  # Render 대시보드에서 Atlas URI로 반드시 설정 (필수)
+      - key: JWT_SECRET
+        generateValue: true  # 프로덕션에서는 Render가 랜덤 생성, 고정하려면 sync:false로 직접 입력
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      # 통합 배포에서는 CLIENT_URL 비워둬도 됨 (동일 오리진 허용)
+      # 분리 배포 시에만 클라이언트 URL을 명시
+      # - key: CLIENT_URL
+      #   value: https://your-client.onrender.com
+      - key: BACKUP_INTERVAL_MS
+        value: 3600000
+
+  # ============ B) 분리 배포 (선택, 위 A 주석 처리 후 해제) ============
+  # - type: web
+  #   name: dungeon-fighter-server
+  #   env: node
+  #   plan: free
+  #   region: singapore
+  #   rootDir: .
+  #   buildCommand: npm install --workspace=server && npm install --workspace=client && npm run build
+  #   startCommand: npm start
+  #   healthCheckPath: /api/health
+  #   envVars:
+  #     - key: NODE_ENV
+  #       value: production
+  #     - key: NODE_VERSION
+  #       value: 22.12.0
+  #     - key: MONGODB_URI
+  #       sync: false
+  #     - key: JWT_SECRET
+  #       generateValue: true
+  #     - key: CLIENT_URL
+  #       value: https://dungeon-fighter-client.onrender.com
+  #     - key: BACKUP_INTERVAL_MS
+  #       value: 3600000
+  #
+  # - type: web
+  #   name: dungeon-fighter-client
+  #   env: static
+  #   rootDir: client
+  #   buildCommand: npm install && npm run build
+  #   staticPublishPath: ./dist
+  #   routes:
+  #     - type: rewrite
+  #       source: /*
+  #       destination: /index.html
+  #   envVars:
+  #     - key: VITE_SERVER_URL
+  #       value: https://dungeon-fighter.onrender.com  # 서버 URL로 교체

@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>던전 파이터 - Dungeon Fighter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=JetBrains+Mono:wght@600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/src/styles/main.css" />
+</head>
+<body>
+<div id="app">
+  <!-- Background FX -->
+  <div class="bg-ambient"></div>
+  <div class="bg-vignette"></div>
+
+  <!-- Auth Screen -->
+  <section id="authScreen" class="screen active">
+    <div class="auth-wrap">
+      <div class="logo-block">
+        <div class="logo-emblem">
+          <span class="logo-sword">⚔️</span>
+          <div class="logo-glow"></div>
+        </div>
+        <h1 class="logo-title"><span class="logo-grad">던전</span> 파이터</h1>
+        <p class="logo-sub">DUNGEON FIGHTER <em>• Web Action RPG</em></p>
+        <p class="logo-tag">어둠을 베고 전설이 되라 — 실시간 멀티플레이어 액션</p>
+      </div>
+
+      <div class="auth-card glass">
+        <div class="auth-tabs">
+          <button class="tab-btn active" data-tab="login">로그인</button>
+          <button class="tab-btn" data-tab="signup">회원가입</button>
+        </div>
+        <form id="loginForm" class="auth-form active">
+          <label>아이디<input id="loginId" placeholder="영문/숫자 3~20자" autocomplete="username" required /></label>
+          <label>비밀번호<input id="loginPw" type="password" placeholder="6자 이상" autocomplete="current-password" required /></label>
+          <button type="submit" class="btn primary w-full">전장으로 입장 <span>›</span></button>
+          <p class="auth-hint">테스트: 아무 아이디로 가입 가능 • MongoDB에 영구 저장</p>
+        </form>
+        <form id="signupForm" class="auth-form">
+          <label>아이디<input id="signupId" placeholder="영문/숫자" required /></label>
+          <label>이메일<input id="signupEmail" type="email" placeholder="you@example.com" required /></label>
+          <label>비밀번호<input id="signupPw" type="password" placeholder="6자 이상" required /></label>
+          <label>비밀번호 확인<input id="signupPw2" type="password" required /></label>
+          <button type="submit" class="btn primary w-full">계정 생성</button>
+        </form>
+        <div id="authMsg" class="auth-msg"></div>
+        <div class="server-status" id="serverStatus">● 서버 연결 확인 중...</div>
+      </div>
+    </div>
+    <footer class="auth-footer">© 2026 Dungeon Fighter • Render + MongoDB • Socket.IO Real-time</footer>
+  </section>
+
+  <!-- Lobby / Main Screen -->
+  <section id="lobbyScreen" class="screen">
+    <header class="topbar glass">
+      <div class="topbar-left">
+        <div class="mini-logo">⚔️ 던전 파이터</div>
+        <span class="badge online" id="onlineCount">접속 1명</span>
+      </div>
+      <div class="topbar-center">
+        <div class="player-brief">
+          <span id="briefName" class="brief-name">모험가</span>
+          <span id="briefLv" class="brief-lv">Lv.1</span>
+          <div class="mini-bar"><div id="briefExp" class="fill exp"></div></div>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <button class="icon-btn" id="btnSettings" title="설정">⚙️</button>
+        <button class="btn ghost sm" id="btnLogout">로그아웃</button>
+      </div>
+    </header>
+
+    <div class="lobby-layout">
+      <div class="lobby-left">
+        <div class="panel glass">
+          <h3>🗺️ 던전 선택</h3>
+          <div id="dungeonList" class="dungeon-grid"></div>
+        </div>
+        <div class="panel glass">
+          <h3>⚔️ 파티 매칭</h3>
+          <p class="muted">던전 입장 전 대기열에서 파티를 구성하세요 (최대 4인)</p>
+          <div class="queue-row">
+            <span id="queueStatus" class="queue-status">대기열 없음</span>
+            <span id="queueCount" class="queue-count">대기 0명</span>
+          </div>
+          <div class="row gap">
+            <button class="btn primary" id="btnQueueJoin">매칭 참가</button>
+            <button class="btn ghost" id="btnQueueLeave">나가기</button>
+            <button class="btn accent" id="btnEnterSolo">솔로 입장</button>
+          </div>
+          <p class="hint">매칭은 2명 이상이면 즉시 파티 구성, 솔로는 10초 후 자동 시작</p>
+        </div>
+      </div>
+
+      <div class="lobby-center">
+        <div class="hero-preview glass">
+          <h3>🦸 캐릭터</h3>
+          <div class="preview-stage">
+            <canvas id="previewCanvas" width="320" height="320"></canvas>
+            <div class="preview-info">
+              <div class="stat-grid" id="statGrid"></div>
+              <div class="row gap">
+                <button class="btn sm" id="btnInventory">🎒 인벤토리</button>
+                <button class="btn sm" id="btnAvatar">👕 아바타</button>
+              </div>
+              <div class="levelup-box">
+                <span id="statPointsInfo">스탯 포인트: 0</span>
+                <div class="row gap">
+                  <button class="btn tiny" data-add="str">힘 +</button>
+                  <button class="btn tiny" data-add="agi">민첩 +</button>
+                  <button class="btn tiny" data-add="int">지능 +</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel glass">
+          <h3>✨ 스킬</h3>
+          <div id="skillList" class="skill-grid"></div>
+        </div>
+      </div>
+
+      <div class="lobby-right">
+        <div class="panel glass chat-panel">
+          <div class="chat-tabs">
+            <button class="chat-tab active" data-chat="world">월드</button>
+            <button class="chat-tab" data-chat="party">파티</button>
+            <button class="chat-tab" data-chat="whisper">귓속말</button>
+          </div>
+          <div id="chatLog" class="chat-log"></div>
+          <div class="chat-input-row">
+            <input id="chatInput" placeholder="메시지 입력 (Enter) - /w 닉네임 메시지 로 귓속말" />
+            <button class="btn sm" id="btnChatSend">전송</button>
+          </div>
+        </div>
+        <div class="panel glass">
+          <h3>🏆 랭킹</h3>
+          <div id="leaderboard" class="leaderboard"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Game Screen -->
+  <section id="gameScreen" class="screen">
+    <div class="game-hud-top">
+      <button class="btn ghost sm" id="btnLeaveDungeon">← 로비</button>
+      <div class="hud-bars">
+        <div class="bar-group">
+          <span class="bar-label">HP</span>
+          <div class="bar"><div id="hpBar" class="fill hp" style="width:100%"></div><span id="hpText" class="bar-text">100/100</span></div>
+        </div>
+        <div class="bar-group">
+          <span class="bar-label">MP</span>
+          <div class="bar"><div id="mpBar" class="fill mp" style="width:100%"></div><span id="mpText" class="bar-text">50/50</span></div>
+        </div>
+        <div class="bar-group">
+          <span class="bar-label">EXP</span>
+          <div class="bar thin"><div id="expBar" class="fill exp" style="width:0%"></div></div>
+        </div>
+      </div>
+      <div class="hud-right">
+        <span id="gameDungeonName" class="dungeon-name">어둠숲 입구</span>
+        <span id="gamePing" class="ping">ping --ms</span>
+        <button class="icon-btn" id="btnGameSettings">⚙️</button>
+      </div>
+    </div>
+
+    <div class="game-stage">
+      <canvas id="gameCanvas"></canvas>
+      <!-- Mobile joystick -->
+      <div id="joystick" class="joystick">
+        <div class="joy-base"><div class="joy-stick"></div></div>
+      </div>
+      <div class="mobile-actions">
+        <button class="mob-btn" data-skill="slash">⚔️</button>
+        <button class="mob-btn" data-skill="fireball">🔥</button>
+        <button class="mob-btn" data-skill="heal">💚</button>
+        <button class="mob-btn" data-skill="dash">💨</button>
+      </div>
+      <!-- Damage numbers layer -->
+      <div id="fxLayer" class="fx-layer"></div>
+    </div>
+
+    <div class="game-hud-bottom">
+      <div class="skill-bar" id="skillBar"></div>
+      <div class="controls-hint">WASD 이동 · 마우스 조준 · [Q]베기 [W]화염구 [E]치유 [R]돌진 [T]메테오 · Space 공격 · P 포션</div>
+    </div>
+
+    <!-- In-game chat overlay -->
+    <div class="ingame-chat glass">
+      <div id="ingameChatLog" class="chat-log small"></div>
+      <input id="ingameChatInput" placeholder="Enter 채팅, /w 닉 메시지 귓속말" />
+    </div>
+  </section>
+
+  <!-- Inventory Modal -->
+  <dialog id="invModal" class="modal glass">
+    <form method="dialog" class="modal-head">
+      <h3>🎒 인벤토리 & 장비</h3>
+      <button class="icon-btn" value="cancel">✕</button>
+    </form>
+    <div class="modal-body inv-layout">
+      <div>
+        <h4>장비</h4>
+        <div id="equipSlots" class="equip-grid"></div>
+        <div class="inv-stats" id="invStats"></div>
+      </div>
+      <div>
+        <div class="row between">
+          <h4>보유 아이템</h4>
+          <div class="tabs sm">
+            <button class="tab-btn active" data-inv="all">전체</button>
+            <button class="tab-btn" data-inv="equipment">장비</button>
+            <button class="tab-btn" data-inv="consumable">소모품</button>
+          </div>
+        </div>
+        <div id="inventoryGrid" class="item-grid"></div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Avatar Modal -->
+  <dialog id="avatarModal" class="modal glass wide">
+    <form method="dialog" class="modal-head">
+      <h3>👕 아바타 커스터마이징</h3>
+      <button class="icon-btn" value="cancel">✕</button>
+    </form>
+    <div class="modal-body avatar-layout">
+      <div class="avatar-preview">
+        <canvas id="avatarCanvas" width="280" height="340"></canvas>
+        <p class="muted">장착 시 실시간으로 캐릭터 외형이 변경됩니다</p>
+      </div>
+      <div class="avatar-options">
+        <div class="avatar-tabs">
+          <button class="avatar-tab active" data-slot="head">머리</button>
+          <button class="avatar-tab" data-slot="top">상의</button>
+          <button class="avatar-tab" data-slot="bottom">하의</button>
+          <button class="avatar-tab" data-slot="weapon">무기</button>
+          <button class="avatar-tab" data-slot="accessory">악세</button>
+        </div>
+        <div id="avatarGrid" class="item-grid"></div>
+        <div class="owned-info">보유 아바타 <span id="avatarOwnedCount"></span>개</div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Settings Modal -->
+  <dialog id="settingsModal" class="modal glass wide">
+    <form method="dialog" class="modal-head">
+      <h3>⚙️ 설정</h3>
+      <button class="icon-btn" value="cancel">✕</button>
+    </form>
+    <div class="modal-body settings-grid">
+      <section class="settings-sect">
+        <h4>🎨 그래픽</h4>
+        <label>해상도<select id="setResolution"><option value="auto">자동</option><option value="1920x1080">1920×1080</option><option value="1280x720">1280×720</option><option value="800x600">800×600</option></select></label>
+        <label>프레임 제한<select id="setFps"><option value="60">60 FPS</option><option value="120">120 FPS</option><option value="30">30 FPS</option></select></label>
+        <label>그림자 품질<select id="setShadow"><option value="high">높음</option><option value="medium">중간</option><option value="low">낮음</option><option value="off">끔</option></select></label>
+        <label class="check"><input type="checkbox" id="setParticles" checked/> 파티클 효과</label>
+      </section>
+      <section class="settings-sect">
+        <h4>🔊 오디오</h4>
+        <label>배경음악 <input type="range" id="setBgm" min="0" max="100" value="60"/></label>
+        <label>효과음 <input type="range" id="setSfx" min="0" max="100" value="80"/></label>
+        <label class="check"><input type="checkbox" id="setMute"/> 음소거</label>
+      </section>
+      <section class="settings-sect">
+        <h4>🎮 컨트롤</h4>
+        <div id="keybindList" class="keybind-list"></div>
+        <label class="check"><input type="checkbox" id="setJoystick" checked/> 모바일 조이스틱 표시</label>
+        <button class="btn sm" id="btnResetKeys">키 초기화</button>
+      </section>
+      <section class="settings-sect">
+        <h4>👤 계정</h4>
+        <label>현재 비밀번호<input type="password" id="curPw" placeholder="현재 비밀번호"/></label>
+        <label>새 비밀번호<input type="password" id="newPw" placeholder="6자 이상"/></label>
+        <button class="btn sm" id="btnChangePw">비밀번호 변경</button>
+        <hr/>
+        <button class="btn ghost sm" id="btnLogout2">로그아웃</button>
+        <button class="btn danger sm" id="btnWithdraw">회원탈퇴</button>
+      </section>
+    </div>
+  </dialog>
+
+  <div id="toastWrap" class="toast-wrap"></div>
+</div>
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>

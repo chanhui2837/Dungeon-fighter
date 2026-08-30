@@ -1,0 +1,26 @@
+{
+  "name": "dungeon-fighter",
+  "version": "1.0.0",
+  "description": "던전 파이터 - 웹 기반 액션 RPG",
+  "private": true,
+  "workspaces": ["client", "server"],
+  "scripts": {
+    "dev": "concurrently \"npm run dev --workspace=server\" \"npm run dev --workspace=client\"",
+    "dev:server": "npm run dev --workspace=server",
+    "dev:client": "npm run dev --workspace=client",
+    "build": "npm run build --workspace=client",
+    "build:all": "npm run install:all && npm run build",
+    "start": "npm start --workspace=server",
+    "install:all": "npm install && npm install --workspace=client && npm install --workspace=server",
+    "loadtest": "node server/src/loadtest.js"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "keywords": ["game", "rpg", "dungeon", "multiplayer", "websocket"],
+  "author": "Dungeon Fighter Team",
+  "license": "MIT"
+}
