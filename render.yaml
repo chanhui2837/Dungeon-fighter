@@ -13,8 +13,7 @@ services:
     region: singapore   # 가까운 리전: singapore / oregon / frankfurt 중 선택
     rootDir: .
     # 루트에서 워크스페이스 전체 설치 + 클라이언트 빌드
-    # --include=dev 로 vite(devDep)까지 설치 (NODE_ENV=production 에서도)
-    buildCommand: npm run install:all && npm run build
+    buildCommand: npm install && npm run build
     startCommand: npm start
     healthCheckPath: /api/health
     autoDeploy: false  # git push 시 자동 배포 원하면 true로 변경
