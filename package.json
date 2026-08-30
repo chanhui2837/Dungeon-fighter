@@ -15,7 +15,7 @@
     "loadtest": "node server/src/loadtest.js"
   },
   "engines": {
-    "node": ">=22.0.0"
+    "node": "22.x"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

@@ -13,7 +13,8 @@ services:
     region: singapore   # 가까운 리전: singapore / oregon / frankfurt 중 선택
     rootDir: .
     # 루트에서 워크스페이스 전체 설치 + 클라이언트 빌드
-    buildCommand: npm install && npm run build
+    # npm optional deps 버그(rollup-linux) 대응: lock 재생성 + Node 22 고정
+    buildCommand: rm -rf node_modules package-lock.json && npm install && npm run build
     startCommand: npm start
     healthCheckPath: /api/health
     autoDeploy: false  # git push 시 자동 배포 원하면 true로 변경
