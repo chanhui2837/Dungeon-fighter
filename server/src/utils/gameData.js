@@ -55,28 +55,68 @@ export const AVATARS = {
 export const MONSTERS = {
   slime: {
     id: 'slime', name: '슬라임', hp: 40, atk: 6, def: 1, spd: 60, exp: 12, gold: 5,
-    pattern: 'chase', size: 22, color: '#4ade80',
+    pattern: 'chase', size: 22, color: '#4ade80', shape: 'blob',
     drops: [{ itemId: 'hp_potion', rate: 0.25 }, { itemId: 'rusty_sword', rate: 0.02 }, { itemId: 'head_hood', rate: 0.008 }]
   },
   goblin: {
     id: 'goblin', name: '고블린', hp: 75, atk: 12, def: 3, spd: 90, exp: 25, gold: 12,
-    pattern: 'zigzag', size: 26, color: '#a16207',
+    pattern: 'zigzag', size: 26, color: '#a16207', shape: 'goblin',
     drops: [{ itemId: 'iron_sword', rate: 0.05 }, { itemId: 'leather_armor', rate: 0.08 }, { itemId: 'hp_potion', rate: 0.3 }, { itemId: 'top_street', rate: 0.015 }, { itemId: 'weapon_bow', rate: 0.012 }]
   },
   skeleton: {
     id: 'skeleton', name: '스켈레톤', hp: 110, atk: 18, def: 5, spd: 80, exp: 40, gold: 20,
-    pattern: 'ranged', projectile: true, size: 28, color: '#e5e7eb',
+    pattern: 'ranged', projectile: true, size: 28, color: '#e5e7eb', shape: 'skeleton',
     drops: [{ itemId: 'chain_mail', rate: 0.06 }, { itemId: 'frost_staff', rate: 0.02 }, { itemId: 'mp_potion', rate: 0.3 }, { itemId: 'head_helm', rate: 0.012 }, { itemId: 'acc_cape', rate: 0.01 }]
   },
   orc: {
     id: 'orc', name: '오크 전사', hp: 180, atk: 28, def: 8, spd: 70, exp: 65, gold: 35,
-    pattern: 'charge', size: 34, color: '#7f1d1d',
+    pattern: 'charge', size: 34, color: '#7f1d1d', shape: 'orc',
     drops: [{ itemId: 'flame_blade', rate: 0.04 }, { itemId: 'hp_ring', rate: 0.07 }, { itemId: 'top_knight', rate: 0.02 }, { itemId: 'bottom_armor', rate: 0.018 }, { itemId: 'weapon_sword_aura', rate: 0.008 }]
+  },
+  bat: {
+    id: 'bat', name: '흡혈 박쥐', hp: 55, atk: 14, def: 2, spd: 110, exp: 28, gold: 10,
+    pattern: 'zigzag', size: 20, color: '#4c1d95', shape: 'bat',
+    drops: [{ itemId: 'mp_potion', rate: 0.2 }, { itemId: 'swift_boots', rate: 0.03 }]
+  },
+  spider: {
+    id: 'spider', name: '동굴 거미', hp: 90, atk: 16, def: 4, spd: 75, exp: 35, gold: 14,
+    pattern: 'chase', size: 24, color: '#1f2937', shape: 'spider',
+    drops: [{ itemId: 'chain_mail', rate: 0.04 }, { itemId: 'hp_ring', rate: 0.04 }]
+  },
+  golem: {
+    id: 'golem', name: '대지 골렘', hp: 260, atk: 32, def: 14, spd: 45, exp: 85, gold: 45,
+    pattern: 'charge', size: 38, color: '#57534e', shape: 'golem',
+    drops: [{ itemId: 'dragon_scale', rate: 0.08 }, { itemId: 'hp_potion', rate: 0.4 }]
+  },
+  wraith: {
+    id: 'wraith', name: '얼음 망령', hp: 130, atk: 22, def: 6, spd: 95, exp: 48, gold: 22,
+    pattern: 'ranged', projectile: true, size: 26, color: '#7dd3fc', shape: 'wraith',
+    drops: [{ itemId: 'frost_staff', rate: 0.05 }, { itemId: 'mp_potion', rate: 0.25 }]
+  },
+  lizard: {
+    id: 'lizard', name: '용혈 도마뱀', hp: 150, atk: 26, def: 7, spd: 85, exp: 60, gold: 28,
+    pattern: 'charge', size: 30, color: '#15803d', shape: 'lizard',
+    drops: [{ itemId: 'flame_blade', rate: 0.03 }, { itemId: 'leather_armor', rate: 0.06 }]
+  },
+  demon: {
+    id: 'demon', name: '심연 악마', hp: 220, atk: 36, def: 10, spd: 80, exp: 95, gold: 55,
+    pattern: 'zigzag', size: 32, color: '#7f1d1d', shape: 'demon',
+    drops: [{ itemId: 'hp_ring', rate: 0.05 }, { itemId: 'weapon_sword_aura', rate: 0.015 }]
   },
   boss_dragon: {
     id: 'boss_dragon', name: '심연의 흑룡', hp: 800, atk: 45, def: 15, spd: 55, exp: 500, gold: 300,
-    pattern: 'boss', size: 56, color: '#111827',
+    pattern: 'boss', size: 56, color: '#111827', shape: 'dragon',
     drops: [{ itemId: 'dragon_scale', rate: 0.5 }, { itemId: 'flame_blade', rate: 0.3 }, { itemId: 'swift_boots', rate: 0.2 }, { itemId: 'head_crown', rate: 0.12 }, { itemId: 'head_halo', rate: 0.06 }, { itemId: 'acc_wings', rate: 0.08 }, { itemId: 'weapon_staff_gold', rate: 0.1 }, { itemId: 'top_mage', rate: 0.15 }]
+  },
+  boss_frost: {
+    id: 'boss_frost', name: '빙하 여왕', hp: 900, atk: 42, def: 16, spd: 50, exp: 650, gold: 400,
+    pattern: 'boss', size: 52, color: '#0ea5e9', shape: 'frost_queen',
+    drops: [{ itemId: 'dragon_scale', rate: 0.4 }, { itemId: 'frost_staff', rate: 0.35 }, { itemId: 'head_halo', rate: 0.1 }, { itemId: 'acc_wings', rate: 0.12 }]
+  },
+  boss_void: {
+    id: 'boss_void', name: '공허의 군주', hp: 1200, atk: 52, def: 18, spd: 48, exp: 900, gold: 600,
+    pattern: 'boss', size: 58, color: '#4c0519', shape: 'void_lord',
+    drops: [{ itemId: 'dragon_scale', rate: 0.6 }, { itemId: 'weapon_sword_aura', rate: 0.25 }, { itemId: 'acc_wings', rate: 0.2 }, { itemId: 'head_crown', rate: 0.15 }]
   },
 };
 
@@ -89,10 +129,18 @@ export const SKILLS = {
 };
 
 export const DUNGEONS = {
-  forest: { id: 'forest', name: '어둠숲 입구', reqLv: 1, monsters: ['slime', 'goblin'], boss: null, bg: '#0f2a1a', desc: '초보자용 숲' },
-  cave: { id: 'cave', name: '해골 동굴', reqLv: 3, monsters: ['goblin', 'skeleton'], boss: null, bg: '#1c1a2e', desc: '해골이 득실한 동굴' },
-  orc_camp: { id: 'orc_camp', name: '오크 야영지', reqLv: 6, monsters: ['orc', 'goblin', 'skeleton'], boss: null, bg: '#2a1a0f', desc: '오크들의 근거지' },
-  dragon_lair: { id: 'dragon_lair', name: '흑룡의 둥지', reqLv: 10, monsters: ['orc', 'skeleton'], boss: 'boss_dragon', bg: '#0f0a0a', desc: '전설의 흑룡이 잠든 곳' },
+  forest: { id: 'forest', name: '어둠숲 입구', reqLv: 1, monsters: ['slime', 'goblin'], boss: null, bg: '#0f2a1a', desc: '초보자용 숲 — 튜토리얼 던전' },
+  cave: { id: 'cave', name: '해골 동굴', reqLv: 3, monsters: ['bat', 'skeleton'], boss: null, bg: '#1c1a2e', desc: '박쥐가 우글거리는 동굴' },
+  swamp: { id: 'swamp', name: '독안개 늪지', reqLv: 5, monsters: ['slime', 'spider', 'lizard'], boss: null, bg: '#14532d', desc: '맹독 거미와 도마뱀이 서식' },
+  orc_camp: { id: 'orc_camp', name: '오크 야영지', reqLv: 6, monsters: ['orc', 'goblin', 'spider'], boss: null, bg: '#2a1a0f', desc: '오크들의 근거지' },
+  spider_nest: { id: 'spider_nest', name: '거미 둥지', reqLv: 8, monsters: ['spider', 'bat', 'skeleton'], boss: null, bg: '#1c0a1a', desc: '거미줄로 뒤덮인 심층' },
+  dragon_lair: { id: 'dragon_lair', name: '흑룡의 둥지', reqLv: 10, monsters: ['lizard', 'orc'], boss: 'boss_dragon', bg: '#0f0a0a', desc: '전설의 흑룡이 잠든 곳' },
+  frozen_peak: { id: 'frozen_peak', name: '빙하 정상', reqLv: 12, monsters: ['golem', 'wraith', 'bat'], boss: 'boss_frost', bg: '#0c2a3e', desc: '영원한 겨울의 신전 — 빙하 여왕 출현' },
+  lava_core: { id: 'lava_core', name: '용암 핵', reqLv: 14, monsters: ['golem', 'demon', 'lizard'], boss: null, bg: '#431407', desc: '끓는 용암과 악마의 소굴' },
+  abyss_temple: { id: 'abyss_temple', name: '심연 사원', reqLv: 16, monsters: ['wraith', 'demon', 'skeleton'], boss: null, bg: '#1a0a2e', desc: '망령이 떠도는 버려진 신전' },
+  sky_island: { id: 'sky_island', name: '천공 섬', reqLv: 18, monsters: ['bat', 'wraith', 'golem'], boss: null, bg: '#0f2a4a', desc: '구름 위 부유하는 신비의 섬' },
+  void_rift: { id: 'void_rift', name: '공허 균열', reqLv: 20, monsters: ['demon', 'wraith', 'golem'], boss: 'boss_void', bg: '#190a1a', desc: '세계의 끝에 열린 공허 — 군주가 기다린다' },
+  celestial: { id: 'celestial', name: '천상의 정원', reqLv: 22, monsters: ['wraith', 'demon', 'lizard'], boss: 'boss_void', bg: '#1a2a3a', desc: '별빛이 쏟아지는 최종 성역' },
 };
 
 export function getExpForLevel(lv) {

@@ -51,25 +51,71 @@ export const audio = {
     const c = ensureCtx();
     if(!c || bgmOsc) return;
     try{
-      bgmOsc = c.createOscillator();
-      const lfo = c.createOscillator();
-      const lfoGain = c.createGain();
-      bgmOsc.type='sine';
-      bgmOsc.frequency.value= 110;
-      lfo.frequency.value=0.12;
-      lfoGain.gain.value=8;
-      lfo.connect(lfoGain);
-      lfoGain.connect(bgmOsc.frequency);
-      bgmOsc.connect(bgmGain);
-      bgmOsc.start();
-      lfo.start();
-      bgmOsc._lfo=lfo; bgmOsc._lfoGain=lfoGain;
+      // 8-bit 신나는 전투 테마 - 140BPM 16스텝 루프
+      let step=0;
+      // C4, E4, G4, B4, A4 등 신나는 진행
+      const melody = [
+        261.63, 329.63, 392.00, 329.63,  // C - E - G - E
+        440.00, 392.00, 329.63, 261.63,  // A - G - E - C
+        329.63, 392.00, 493.88, 392.00,  // E - G - B - G
+        523.25, 493.88, 392.00, 329.63,  // C5 - B - G - E
+        261.63, 329.63, 392.00, 493.88,  // 상승
+        523.25, 587.33, 523.25, 392.00,  // 절정
+        329.63, 261.63, 293.66, 329.63,  // 하강
+        392.00, 329.63, 261.63, 0,       // 마무리
+      ];
+      const bass = [
+        65.41, 65.41, 98.00, 98.00,
+        110.00,110.00, 98.00, 65.41,
+        82.41, 82.41,123.47,123.47,
+        130.81,130.81,123.47, 82.41,
+        65.41, 65.41, 73.42, 82.41,
+        98.00,110.00, 98.00, 82.41,
+        65.41, 65.41, 73.42, 82.41,
+        98.00, 82.41, 65.41, 65.41,
+      ];
+      const bpm = 142;
+      const interval = 60000/bpm/2; // 8분음표
+      const playStep = ()=>{
+        if(!bgmOsc || !ctx || ctx.state==='suspended') return;
+        const now = ctx.currentTime;
+        const freq = melody[step % melody.length];
+        const low = bass[step % bass.length];
+        // lead - square 8bit
+        if(freq>0){
+          const o = ctx.createOscillator(); const g = ctx.createGain();
+          o.type='square'; o.frequency.value=freq;
+          g.gain.setValueAtTime(0.22, now); g.gain.exponentialRampToValueAtTime(0.01, now+0.18);
+          o.connect(g); g.connect(bgmGain);
+          o.start(now); o.stop(now+0.2);
+        }
+        // bass - triangle
+        if(low>0 && step%2===0){
+          const b = ctx.createOscillator(); const bg = ctx.createGain();
+          b.type='triangle'; b.frequency.value=low;
+          bg.gain.setValueAtTime(0.18, now); bg.gain.exponentialRampToValueAtTime(0.01, now+0.28);
+          b.connect(bg); bg.connect(bgmGain);
+          b.start(now); b.stop(now+0.32);
+        }
+        // hihat on off-beat
+        if(step%2===1){
+          const n = ctx.createOscillator(); const ng = ctx.createGain();
+          n.type='square'; n.frequency.value= 8000;
+          ng.gain.setValueAtTime(0.04, now); ng.gain.exponentialRampToValueAtTime(0.001, now+0.06);
+          n.connect(ng); ng.connect(bgmGain);
+          n.start(now); n.stop(now+0.07);
+        }
+        step = (step+1) % melody.length;
+      };
+      // use interval for steady tempo
+      bgmOsc = { _timer: setInterval(playStep, interval), _play: playStep };
+      // immediate
+      playStep();
     }catch{}
   },
   stopBgm(){
     if(bgmOsc){
-      try{ bgmOsc.stop(); bgmOsc._lfo?.stop(); }catch{}
-      try{ bgmOsc.disconnect(); bgmOsc._lfo?.disconnect(); }catch{}
+      try{ clearInterval(bgmOsc._timer); }catch{}
       bgmOsc=null;
     }
   },
