@@ -40,12 +40,13 @@ const UserSchema = new mongoose.Schema({
     },
     skills: {
       type: [String],
-      default: ['slash']
+      default: []
     },
-    unlockedSkills: { type: [String], default: ['slash'] }
+    unlockedSkills: { type: [String], default: [] }
   },
-  inventory: { type: [InventoryItemSchema], default: () => [{ itemId: 'hp_potion', count: 3 }, { itemId: 'rusty_sword', count: 1 }] },
-  avatarInventory: { type: [String], default: () => ['head_none', 'top_none', 'bottom_none', 'weapon_none', 'acc_none', 'head_hood'] },
+  // 시작은 기본 검 + 기본 갑옷만 지급 (포션/스킬 없음)
+  inventory: { type: [InventoryItemSchema], default: () => [{ itemId: 'rusty_sword', count: 1 }, { itemId: 'leather_armor', count: 1 }] },
+  avatarInventory: { type: [String], default: () => ['head_none', 'top_none', 'bottom_none', 'weapon_none', 'acc_none'] },
   progress: {
     currentDungeon: { type: String, default: 'forest' },
     clearedDungeons: { type: [String], default: [] },

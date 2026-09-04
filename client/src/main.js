@@ -815,35 +815,9 @@ function initJoystick(){
     const d=Math.min(dist,max);
     const x=Math.cos(ang)*d, y=Math.sin(ang)*d;
     stick.style.transform=`translate(${x}px, ${y}px)`;
-    // inject into input
     if(game){
       const nx = Math.cos(ang)*(d/max), ny=Math.sin(ang)*(d/max);
-      // directly move me + set input keys emulation
-      // For simplicity, set game.me velocity influence via input.getVector override? Instead directly move
-      // We'll simulate keys by setting temporary vector on game
       game._joyVec = {x: nx, y: ny};
-      // patch Game.update to use joyVec if present
-      if(!game._joyPatched){
-        const origUpdate=game.update.bind(game);
-        game.update=(dt)=>{
-          if(game._joyVec && (Math.abs(game._joyVec.x)>0.08 || Math.abs(game._joyVec.y)>0.08)){
-            const spd= calcTotalStats().spd || 130;
-            let nx2 = game.me.x + game._joyVec.x * spd * dt;
-            let ny2 = game.me.y + game._joyVec.y * spd * dt;
-            nx2=Math.max(16,Math.min(game.renderer.world.w-16,nx2));
-            ny2=Math.max(16,Math.min(game.renderer.world.h-16,ny2));
-            if(game._joyVec.x!==0) game.me.facing= game._joyVec.x>0?1:-1;
-            const now=Date.now();
-            if(!game._lastSend || now-game._lastSend>50){
-              game.me.x=nx2; game.me.y=ny2; game.me.vx=game._joyVec.x*spd; game.me.vy=game._joyVec.y*spd;
-              game.socket?.volatile.emit('player:move',{x:game.me.x,y:game.me.y,vx:game.me.vx,vy:game.me.vy,facing:game.me.facing});
-              game._lastSend=now;
-            } else { game.me.x=nx2; game.me.y=ny2; }
-          }
-          origUpdate(dt);
-        };
-        game._joyPatched=true;
-      }
     }
     e.preventDefault();
   }, {passive:false});

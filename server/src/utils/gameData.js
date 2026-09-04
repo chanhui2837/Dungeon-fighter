@@ -121,11 +121,11 @@ export const MONSTERS = {
 };
 
 export const SKILLS = {
-  slash: { id: 'slash', name: '베기', key: 'Q', mp: 0, cd: 600, dmg: 1.2, range: 60, desc: '전방 베기', unlockLv: 1, icon: '⚔️' },
-  fireball: { id: 'fireball', name: '화염구', key: 'W', mp: 15, cd: 2500, dmg: 2.0, range: 320, projSpeed: 320, desc: '화염구 발사', unlockLv: 2, icon: '🔥' },
-  heal: { id: 'heal', name: '치유', key: 'E', mp: 20, cd: 8000, heal: 60, desc: '체력 회복', unlockLv: 3, icon: '💚' },
-  dash: { id: 'dash', name: '돌진', key: 'R', mp: 10, cd: 4000, dashDist: 140, desc: '빠르게 돌진', unlockLv: 5, icon: '💨' },
-  meteor: { id: 'meteor', name: '메테오', key: 'T', mp: 40, cd: 12000, dmg: 3.5, range: 200, aoe: 90, desc: '광역 메테오', unlockLv: 8, icon: '☄️' },
+  slash: { id: 'slash', name: '베기', key: 'Q', mp: 0, cd: 600, dmg: 1.2, range: 60, desc: '전방 베기', unlockLv: 2, icon: '⚔️' },
+  fireball: { id: 'fireball', name: '화염구', key: 'W', mp: 15, cd: 2500, dmg: 2.0, range: 320, projSpeed: 320, desc: '화염구 발사', unlockLv: 3, icon: '🔥' },
+  heal: { id: 'heal', name: '치유', key: 'E', mp: 20, cd: 8000, heal: 60, desc: '체력 회복', unlockLv: 4, icon: '💚' },
+  dash: { id: 'dash', name: '돌진', key: 'R', mp: 10, cd: 4000, dashDist: 140, desc: '빠르게 돌진', unlockLv: 6, icon: '💨' },
+  meteor: { id: 'meteor', name: '메테오', key: 'T', mp: 40, cd: 12000, dmg: 3.5, range: 200, aoe: 90, desc: '광역 메테오', unlockLv: 9, icon: '☄️' },
 };
 
 export const DUNGEONS = {

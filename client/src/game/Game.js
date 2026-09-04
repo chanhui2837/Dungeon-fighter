@@ -55,7 +55,13 @@ export class Game{
     this.socket.on('player:leave', ({id})=> this.players.delete(id));
     this.socket.on('player:move', ({id,x,y,vx,vy,facing})=>{
       const p=this.players.get(id);
-      if(p){ p.x=x; p.y=y; p.vx=vx; p.vy=vy; if(facing) p.facing=facing; }
+      if(p){
+        p.x=x; p.y=y; p.vx=vx; p.vy=vy; if(facing) p.facing=facing;
+        const moving = Math.hypot(vx||0, vy||0) > 5;
+        p.moving = moving;
+        if(moving) p._walkTick = (p._walkTick||0) + 0.22;
+        else p._walkTick = 0;
+      }
     });
     this.socket.on('player:attack', ({id})=>{
       const p= id===this.socket.id? this.me : this.players.get(id);
@@ -161,24 +167,31 @@ export class Game{
     this.running=true;
     this.renderer.resize();
     this.renderer.applySettings(state.settings);
-    this._fpsInterval = 1000 / (state.settings.graphics?.fps || 60);
+    // fps 설정은 참고만, 실제 루프는 RAF 네이티브로 돌고 dt로 물리 처리 (끊김 방지)
+    this._targetFps = state.settings.graphics?.fps || 60;
+    this._fpsInterval = this._targetFps ? 1000 / this._targetFps : 0;
     this.setMeFromState();
     let last = performance.now();
+    this._fpsLast = performance.now();
+    this._accum = 0;
     const loop = (now)=>{
       if(!this.running) return;
-      const elapsed = now - this._fpsLast;
-      if(elapsed < this._fpsInterval){
-        requestAnimationFrame(loop);
-        return;
+      // fps 제한이 0(무제한)이거나 60이면 네이티브 RAF 그대로 사용 - 끊김 제거
+      if(this._fpsInterval && this._targetFps !== 60){
+        const elapsed = now - this._fpsLast;
+        // 0.8ms 여유로 마이크로 지터 완화
+        if(elapsed < this._fpsInterval - 0.8){
+          requestAnimationFrame(loop);
+          return;
+        }
+        this._fpsLast = now - (elapsed % this._fpsInterval);
       }
-      this._fpsLast = now - (elapsed % this._fpsInterval);
       const dt = Math.min(0.05, (now-last)/1000);
       last=now;
       this.update(dt);
       this.render();
       requestAnimationFrame(loop);
     };
-    this._fpsLast = performance.now();
     requestAnimationFrame(loop);
     // ping loop
     this._pingTimer=setInterval(()=>{
@@ -196,26 +209,51 @@ export class Game{
   }
 
   update(dt){
-    // input -> movement
+    // input -> movement (부드러운 이동 + 걷기 모션 틱)
     const keys = state.settings.controls.keys;
     const vec = this.input.getVector(keys);
+    // 조이스틱 벡터가 있으면 우선 사용 (모바일)
+    const joy = this._joyVec;
+    let ix = vec.x, iy = vec.y;
+    if(joy && (Math.abs(joy.x)>0.08 || Math.abs(joy.y)>0.08)){
+      ix = joy.x; iy = joy.y;
+    }
+    // 정규화 (대각선 속도 보정)
+    const len = Math.hypot(ix, iy);
+    if(len>1){ ix/=len; iy/=len; }
     const spd = (state.character?.stats ? 120 + (state.character.stats.agi||5)*2 : 130);
-    let nx = this.me.x + vec.x * spd * dt;
-    let ny = this.me.y + vec.y * spd * dt;
+    let nx = this.me.x + ix * spd * dt;
+    let ny = this.me.y + iy * spd * dt;
     nx=Math.max(16,Math.min(this.renderer.world.w-16,nx));
     ny=Math.max(16,Math.min(this.renderer.world.h-16,ny));
-    const moving = vec.x!==0||vec.y!==0;
+    const moving = len>0.08 || Math.hypot(ix,iy)>0.08;
+    this.me.moving = moving;
     if(moving){
-      if(vec.x!==0) this.me.facing = vec.x>0?1:-1;
+      this.me._walkTick = (this.me._walkTick||0) + dt*10;
+      if(Math.abs(ix) > Math.abs(iy)) this.me.facing = ix>0?1:-1;
+      // 방향 dir은 Renderer가 vx/vy로 계산
+    } else {
+      // 서서히 감속 (미끄러짐 방지)
+      this.me._walkTick = 0;
     }
-    // send move at ~20hz
+    this.me.vx = ix*spd; this.me.vy = iy*spd;
+    // 공격 중에는 약간 감속 (모션 자연스러움)
+    if(this.me.isAttacking){ nx = this.me.x + ix*spd*dt*0.55; ny = this.me.y + iy*spd*dt*0.55; }
+    // send move at ~20hz (부드럽게)
     const now=Date.now();
-    if(!this._lastSend || now - this._lastSend > 50){
-      if(Math.hypot(nx - this.me.x, ny - this.me.y) > 0.5 || moving){
+    const shouldSend = !this._lastSend || now - this._lastSend > 45;
+    if(shouldSend){
+      if(Math.hypot(nx - this.me.x, ny - this.me.y) > 0.3 || moving){
         this.me.x=nx; this.me.y=ny;
-        this.me.vx=vec.x*spd; this.me.vy=vec.y*spd;
         this.socket?.volatile.emit('player:move',{x:this.me.x,y:this.me.y,vx:this.me.vx,vy:this.me.vy,facing:this.me.facing});
         this._lastSend=now;
+      } else if(!moving && Math.hypot(this.me.vx, this.me.vy)>1){
+        // 정지 시 마지막 정지 패킷
+        this.me.x=nx; this.me.y=ny;
+        this.socket?.volatile.emit('player:move',{x:this.me.x,y:this.me.y,vx:0,vy:0,facing:this.me.facing});
+        this._lastSend=now;
+      } else {
+        this.me.x=nx; this.me.y=ny;
       }
     } else {
       this.me.x=nx; this.me.y=ny;

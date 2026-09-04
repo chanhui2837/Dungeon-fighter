@@ -59,10 +59,10 @@ router.post('/signup', async (req, res) => {
           stats: { str: 5, agi: 5, int: 5 }, hp: 100, mp: 50,
           equipment: { weapon: null, top: null, bottom: null, accessory1: null, accessory2: null },
           avatar: { head: 'head_none', top: 'top_none', bottom: 'bottom_none', weapon: 'weapon_none', accessory: 'acc_none' },
-          skills: ['slash'], unlockedSkills: ['slash']
+          skills: [], unlockedSkills: []
         },
-        inventory: [{ itemId: 'hp_potion', count: 3 }, { itemId: 'rusty_sword', count: 1 }],
-        avatarInventory: ['head_none','top_none','bottom_none','weapon_none','acc_none','head_hood'],
+        inventory: [{ itemId: 'rusty_sword', count: 1 }, { itemId: 'leather_armor', count: 1 }],
+        avatarInventory: ['head_none','top_none','bottom_none','weapon_none','acc_none'],
         progress: { currentDungeon: 'forest', clearedDungeons: [], playTime: 0, monstersKilled: 0 },
         createdAt: new Date(), updatedAt: new Date()
       };

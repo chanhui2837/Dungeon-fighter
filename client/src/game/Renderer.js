@@ -42,9 +42,18 @@ export class Renderer{
     this.viewW=w; this.viewH=h;
     this._currentDpr = dpr;
   }
-  setCamera(x,y){
-    this.camera.x = Math.max(0, Math.min(this.world.w - this.viewW, x - this.viewW/2));
-    this.camera.y = Math.max(0, Math.min(this.world.h - this.viewH, y - this.viewH/2));
+  setCamera(x,y, smooth=true){
+    const tx = Math.max(0, Math.min(this.world.w - this.viewW, x - this.viewW/2));
+    const ty = Math.max(0, Math.min(this.world.h - this.viewH, y - this.viewH/2));
+    if(!smooth || this._firstCam === undefined){
+      this.camera.x = tx; this.camera.y = ty; this._firstCam=false;
+    } else {
+      // 부드러운 추적 (저크 제거) - 14% lerp
+      this.camera.x += (tx - this.camera.x) * 0.16;
+      this.camera.y += (ty - this.camera.y) * 0.16;
+      if(Math.abs(this.camera.x - tx) < 0.3) this.camera.x = tx;
+      if(Math.abs(this.camera.y - ty) < 0.3) this.camera.y = ty;
+    }
   }
   clear(bg='#0b1220'){
     this.ctx.fillStyle=bg;
@@ -102,66 +111,203 @@ export class Renderer{
     const ctx=this.ctx; const cam=this.camera;
     const x=p.x - cam.x, y=p.y - cam.y;
     const shadowQ = this.settings?.graphics?.shadow || 'high';
+    // 쫄라맨 스틱맨 - 걷는 모션 + 4방향 + 아바타 반영 (레거시 고품질 복원)
+    const scale = isMe ? 1.05 : 0.95;
+    // 방향 추정: vx/vy 기반, 없으면 facing
+    let dir = 'down';
+    const vx = p.vx||0, vy = p.vy||0;
+    const isMoving = p.moving ?? (Math.hypot(vx,vy) > 8);
+    if (Math.abs(vx) > Math.abs(vy)) dir = (vx>0 || p.facing===1) ? 'right' : 'left';
+    else if (vy < -6) dir = 'up';
+    else if (vy > 6) dir = 'down';
+    else dir = p.facing===-1 ? 'left' : (p.facing===1 ? 'right' : 'down');
+    const tick = isMoving ? (p._walkTick ?? performance.now()*0.01) : 0;
+    const attackFrame = p.isAttacking ? 7 : (p._attackFrame||0);
+
     ctx.save();
     ctx.translate(x,y);
-    // shadow - respects quality setting
+    ctx.scale(scale, scale);
+    // 그림자
     if(shadowQ!=='off'){
-      ctx.fillStyle= shadowQ==='low' ? 'rgba(0,0,0,.18)' : 'rgba(0,0,0,.35)';
-      ctx.beginPath(); ctx.ellipse(0,18, 18, 7, 0,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='rgba(0,0,0,0.22)';
+      ctx.beginPath(); ctx.ellipse(0,18,14,5,0,0,Math.PI*2); ctx.fill();
     }
-    // body base
-    const facing = p.facing||1;
-    ctx.scale(facing,1);
-    // avatar colors by equipment (simplified visual)
-    // legs
-    ctx.fillStyle= this.avatarColor(p.avatar?.bottom, '#3b82f6');
-    ctx.fillRect(-8, 6, 16, 14);
-    // torso
-    ctx.fillStyle= this.avatarColor(p.avatar?.top, '#1e293b');
-    ctx.fillRect(-10, -8, 20, 18);
-    // head
-    ctx.fillStyle='#fde68a';
-    ctx.beginPath(); ctx.arc(0, -14, 10, 0, Math.PI*2); ctx.fill();
-    // head avatar extra
-    if(p.avatar?.head && p.avatar.head!=='head_none'){
-      ctx.font='14px serif'; ctx.textAlign='center'; ctx.fillText(this.avatarEmoji(p.avatar.head), 0, -28);
+    // 아바타 매핑 (신규 ID -> 레거시 색상/아이콘)
+    const topId = p.avatar?.top || 'top_none';
+    const bottomId = p.avatar?.bottom || 'bottom_none';
+    const headId = p.avatar?.head || 'head_none';
+    const weaponId = p.avatar?.weapon || 'weapon_none';
+    const accId = p.avatar?.accessory || 'acc_none';
+    const clothesColor = topId==='top_knight' ? '#60a5fa' : topId==='top_mage' ? '#7c3aed' : topId==='top_street' ? '#111' : '#ffcc00';
+    let headColor = null;
+    if(headId==='head_crown') headColor='#f7c948';
+    else if(headId==='head_helm') headColor='#94a3b8';
+    else if(headId==='head_hood') headColor='#1e293b';
+    else if(headId==='head_halo') headColor='#facc15';
+    const hasWings = accId==='acc_wings';
+    const hasCape = accId==='acc_cape';
+
+    // 날개/망토 (뒤)
+    if(hasWings){
+      ctx.fillStyle='rgba(167,139,250,0.85)';
+      ctx.beginPath(); ctx.ellipse(-10,-6,8,14,-0.4,0,Math.PI*2); ctx.ellipse(10,-6,8,14,0.4,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle='#e5e7eb'; ctx.lineWidth=1; ctx.stroke();
+    } else if(hasCape){
+      const capeGrad = ctx.createLinearGradient(-12,-10, -6, 12);
+      capeGrad.addColorStop(0,'#ef4444'); capeGrad.addColorStop(1,'#7f1d1d');
+      ctx.fillStyle=capeGrad;
+      ctx.beginPath(); ctx.moveTo(-6,2); ctx.quadraticCurveTo(-26,-14, -30, -6); ctx.quadraticCurveTo(-32,8, -16,14); ctx.quadraticCurveTo(-10,6, -6,2); ctx.fill();
     }
-    // weapon
-    if(p.avatar?.weapon && p.avatar.weapon!=='weapon_none'){
-      ctx.fillStyle='#e5e7eb';
-      // sword on side
-      const atkSwing = p.isAttacking ? Date.now()%200 <100 ? -0.6 : 0.6 : 0;
-      ctx.save(); ctx.rotate(atkSwing);
-      ctx.fillRect(10, -10, 18, 4);
-      ctx.fillStyle='#f59e0b'; ctx.fillRect(24, -11, 6, 6);
+
+    // 걷기 사이클
+    const walkCycle = Math.sin(tick*0.9);
+    let legLeftAng=0, legRightAng=0, armLeftAng=0, armRightAng=0;
+    if(isMoving){
+      if(dir==='left' || dir==='right'){
+        legLeftAng = walkCycle * 28;
+        legRightAng = -walkCycle * 28;
+        armLeftAng = -walkCycle * 22;
+        armRightAng = walkCycle * 22;
+      } else if(dir==='up'){
+        legLeftAng = walkCycle * 12;
+        legRightAng = -walkCycle * 12;
+        armLeftAng = walkCycle * 10;
+        armRightAng = -walkCycle * 10;
+      } else {
+        legLeftAng = walkCycle * 18;
+        legRightAng = -walkCycle * 18;
+        armLeftAng = -walkCycle * 18;
+        armRightAng = walkCycle * 18;
+      }
+      if(attackFrame>0) armRightAng += attackFrame*7;
+    } else if(attackFrame>0){
+      armRightAng = attackFrame*9;
+    }
+    function legEndpoint(angleDeg, len=14){
+      const rad=angleDeg*Math.PI/180;
+      return {x: Math.sin(rad)*len*0.35, y: Math.cos(rad)*len};
+    }
+    const ll=legEndpoint(legLeftAng, 15);
+    const rl=legEndpoint(legRightAng, 15);
+    // 다리
+    ctx.strokeStyle='#1a1a1a'; ctx.lineWidth=3.2; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(-3,10); ctx.lineTo(-3+ll.x, 10+ll.y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(3,10); ctx.lineTo(3+rl.x, 10+rl.y); ctx.stroke();
+    ctx.fillStyle='#111'; ctx.beginPath(); ctx.ellipse(-3+ll.x, 10+ll.y+1, 4,2,0,0,Math.PI*2); ctx.ellipse(3+rl.x,10+rl.y+1,4,2,0,0,Math.PI*2); ctx.fill();
+    // 몸통
+    ctx.fillStyle=clothesColor; ctx.strokeStyle='#000'; ctx.lineWidth=1.2;
+    if(dir==='left' || dir==='right'){ ctx.fillRect(-5,-6,10,16); ctx.strokeRect(-5,-6,10,16); }
+    else { ctx.fillRect(-7,-6,14,16); ctx.strokeRect(-7,-6,14,16); }
+    ctx.fillStyle='#4b3a1a'; ctx.fillRect(-7,6,14,3);
+    // 팔
+    ctx.strokeStyle='#111'; ctx.lineWidth=3;
+    const al = legEndpoint(armLeftAng, 11);
+    const ar = legEndpoint(armRightAng, 11);
+    if(dir==='right'){
+      ctx.beginPath(); ctx.moveTo(4,-3); ctx.lineTo(4+ar.x*0.8, -3+ar.y*0.6); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-4,-3); ctx.lineTo(-4+al.x*0.5, -3+al.y*0.6); ctx.stroke();
+    } else if(dir==='left'){
+      ctx.beginPath(); ctx.moveTo(-4,-3); ctx.lineTo(-4+al.x*0.8, -3+al.y*0.6); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(4,-3); ctx.lineTo(4+ar.x*0.5, -3+ar.y*0.6); ctx.stroke();
+    } else {
+      ctx.beginPath(); ctx.moveTo(-7,-2); ctx.lineTo(-7+al.x*0.6, -2+al.y*0.5); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(7,-2); ctx.lineTo(7+ar.x*0.6, -2+ar.y*0.5); ctx.stroke();
+    }
+    ctx.fillStyle='#ffdbac';
+    if(dir==='right' || dir==='left'){
+      ctx.beginPath(); ctx.arc((dir==='right'?4+ar.x*0.8: -4+al.x*0.8), (-3 + (dir==='right'?ar.y:al.y)*0.6), 3,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc((dir==='right'?-4+al.x*0.5:4+ar.x*0.5), (-3+(dir==='right'?al.y:ar.y)*0.6), 2.6,0,Math.PI*2); ctx.fill();
+    } else {
+      const handLx = -7 + al.x*0.6, handLy = -2 + al.y*0.5;
+      const handRx = 7 + ar.x*0.6, handRy = -2 + ar.y*0.5;
+      ctx.beginPath(); ctx.arc(handLx, handLy, 3,0,Math.PI*2); ctx.arc(handRx, handRy,3,0,Math.PI*2); ctx.fill();
+    }
+    // 무기
+    if(weaponId && weaponId!=='weapon_none'){
+      ctx.save();
+      let wx, wy, wAng=-45;
+      if(dir==='right'){ wx=4+ar.x*0.8; wy=-3+ar.y*0.6; wAng= attackFrame? -20+attackFrame*6 : -25; }
+      else if(dir==='left'){ wx=-4+al.x*0.8; wy=-3+al.y*0.6; wAng=200; }
+      else if(dir==='up'){ wx=7+ar.x*0.6; wy=-2+ar.y*0.5; wAng=-120; }
+      else { wx=7+ar.x*0.6; wy=-2+ar.y*0.5; wAng= -30 + (attackFrame?attackFrame*5:0); }
+      ctx.translate(wx, wy); ctx.rotate(wAng*Math.PI/180);
+      if(weaponId==='weapon_sword_aura'){
+        ctx.fillStyle='#38bdf8'; ctx.shadowColor='#38bdf8'; ctx.shadowBlur=6;
+        ctx.fillRect(0,-2,18,4); ctx.fillStyle='#fff'; ctx.fillRect(2,-1,14,1);
+        ctx.fillStyle='#0f172a'; ctx.fillRect(-4,-3,6,6); ctx.shadowBlur=0;
+      } else if(weaponId==='weapon_staff_gold'){
+        ctx.fillStyle='#92400e'; ctx.fillRect(0,-1.5,12,3);
+        ctx.fillStyle='#f59e0b'; ctx.beginPath(); ctx.arc(12,-0.5,5,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle='#fef3c7'; ctx.beginPath(); ctx.arc(12,-0.5,2.2,0,Math.PI*2); ctx.fill();
+      } else if(weaponId==='weapon_bow'){
+        ctx.strokeStyle='#78350f'; ctx.lineWidth=2.2; ctx.beginPath(); ctx.arc(6,0,8, -0.8, 0.8); ctx.stroke();
+        ctx.strokeStyle='#e5e7eb'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(6,-6); ctx.lineTo(6,6); ctx.stroke();
+      } else {
+        ctx.fillStyle='#c0c0c0'; ctx.fillRect(0,-1.2,14,2.4);
+        ctx.fillStyle='#4b3a1a'; ctx.fillRect(-3,-2,5,4);
+      }
       ctx.restore();
-      ctx.font='10px serif'; ctx.fillText(this.avatarEmoji(p.avatar.weapon), 18, -12);
+    } else if(attackFrame>0){
+      ctx.strokeStyle='rgba(251,191,36,0.6)'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.arc((dir==='right'?8:7), -2, 6+attackFrame, -0.5, 0.5); ctx.stroke();
     }
-    // accessory wings
-    if(p.avatar?.accessory==='acc_wings'){
-      ctx.fillStyle='rgba(167,139,250,.7)';
-      ctx.beginPath(); ctx.ellipse(-14,-6,10,14, -0.4,0,Math.PI*2); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(14,-6,10,14, 0.4,0,Math.PI*2); ctx.fill();
-    } else if(p.avatar?.accessory==='acc_cape'){
-      ctx.fillStyle='rgba(239,68,68,.85)'; ctx.fillRect(-12,-10,4,22);
+    // 머리
+    ctx.fillStyle='#ffdbac'; ctx.strokeStyle='#000'; ctx.lineWidth=1.2;
+    ctx.beginPath(); ctx.arc(0,-14,9,0,Math.PI*2); ctx.fill(); ctx.stroke();
+    let eyeDx=0, eyeDy=0;
+    if(dir==='left') eyeDx=-2; else if(dir==='right') eyeDx=2; else if(dir==='up') eyeDy=-1; else if(dir==='down') eyeDy=1;
+    if(dir==='up'){
+      ctx.fillStyle='#2a1a0a'; ctx.beginPath(); ctx.arc(0,-14,8.5, Math.PI, 0); ctx.fill();
+    } else {
+      ctx.fillStyle='#0f172a';
+      ctx.beginPath(); ctx.arc(-2.5+eyeDx*0.4,-15+eyeDy,1.7,0,Math.PI*2); ctx.arc(2.5+eyeDx*0.4,-15+eyeDy,1.7,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(-2+eyeDx*0.4,-15.5,0.6,0,Math.PI*2); ctx.arc(3+eyeDx*0.4,-15.5,0.6,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#38bdf8'; ctx.beginPath(); ctx.arc(-2.5+eyeDx*0.4,-14.8,0.7,0,Math.PI*2); ctx.arc(2.5+eyeDx*0.4,-14.8,0.7,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle='#92400e'; ctx.lineWidth=1; ctx.beginPath();
+      if(dir==='left'||dir==='right') ctx.arc(eyeDx*0.6,-11,2,0.2,Math.PI-0.2);
+      else ctx.arc(0,-11,2,0.1,Math.PI-0.1);
+      ctx.stroke();
+    }
+    if(headColor){
+      if(headId==='head_crown'){
+        ctx.fillStyle='#f59e0b'; ctx.beginPath(); ctx.moveTo(-8,-18); ctx.lineTo(-6,-26); ctx.lineTo(-2,-20); ctx.lineTo(0,-27); ctx.lineTo(2,-20); ctx.lineTo(6,-26); ctx.lineTo(8,-18); ctx.closePath(); ctx.fill(); ctx.strokeStyle='#b45309'; ctx.stroke();
+        ctx.fillStyle='#ef4444'; ctx.beginPath(); ctx.arc(0,-22,1.8,0,Math.PI*2); ctx.fill();
+      } else if(headId==='head_helm'){
+        ctx.fillStyle='#64748b'; ctx.beginPath(); ctx.roundRect(-8,-18,16,9,4); ctx.fill();
+        ctx.fillStyle='#94a3b8'; ctx.fillRect(-8,-14,16,2);
+      } else if(headId==='head_hood'){
+        ctx.fillStyle='#1e293b'; ctx.beginPath(); ctx.arc(0,-20,12, Math.PI*1.1, Math.PI*1.9); ctx.fill();
+      } else if(headId==='head_halo'){
+        ctx.strokeStyle='rgba(250,204,21,.95)'; ctx.lineWidth=2; ctx.shadowColor='#facc15'; ctx.shadowBlur=8; ctx.beginPath(); ctx.ellipse(0,-22,12,4,0,0,Math.PI*2); ctx.stroke(); ctx.shadowBlur=0;
+      }
+    } else {
+      ctx.fillStyle='#2a1a0a'; ctx.beginPath(); ctx.arc(0,-18,9, Math.PI, 0); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(0,-19,7,4,0,0,Math.PI*2); ctx.fill();
+    }
+    if(attackFrame>0){
+      ctx.strokeStyle=`rgba(255,255,255,${attackFrame/10})`; ctx.lineWidth=1.5; ctx.beginPath(); ctx.arc(0,-6,12+attackFrame,0,Math.PI*2); ctx.stroke();
     }
     ctx.restore();
 
-    // name & hp bar (not mirrored)
+    // 이름/체력바 (카메라 변환 후)
     ctx.save();
     ctx.translate(x,y);
     ctx.textAlign='center';
     ctx.font='700 11px Noto Sans KR';
     ctx.fillStyle= isMe ? '#f59e0b' : '#e6eefc';
-    ctx.fillText(p.username || (isMe?'나':'플레이어'), 0, -38);
+    // 이름 배경
+    const name = p.username || (isMe?'나':'플레이어');
+    ctx.font='700 11px Noto Sans KR';
+    const tw = ctx.measureText(name).width;
+    ctx.fillStyle='rgba(0,0,0,.45)'; ctx.beginPath(); ctx.roundRect(-tw/2-6, -42, tw+12, 14, 7); ctx.fill();
+    ctx.fillStyle= isMe ? '#f59e0b' : '#e6eefc';
+    ctx.fillText(name, 0, -32);
     if(p.level) { ctx.font='600 10px JetBrains Mono'; ctx.fillStyle='rgba(255,255,255,.7)'; ctx.fillText(`Lv.${p.level}`, 0, -48); }
-    // hp
     const w=44, h=5;
-    ctx.fillStyle='rgba(0,0,0,.6)'; ctx.fillRect(-w/2, -30, w, h);
+    ctx.fillStyle='rgba(0,0,0,.6)'; ctx.fillRect(-w/2, -24, w, h);
     ctx.fillStyle= p.hp/p.maxHp <0.3 ? '#ef4444' : '#22c55e';
-    ctx.fillRect(-w/2, -30, w*(Math.max(0,p.hp)/Math.max(1,p.maxHp)), h);
-    ctx.strokeStyle='rgba(255,255,255,.15)'; ctx.strokeRect(-w/2,-30,w,h);
-    // hit flash
+    ctx.fillRect(-w/2, -24, w*(Math.max(0,p.hp)/Math.max(1,p.maxHp)), h);
+    ctx.strokeStyle='rgba(255,255,255,.15)'; ctx.strokeRect(-w/2,-24,w,h);
     if(p._hitUntil && Date.now()<p._hitUntil){ ctx.fillStyle='rgba(239,68,68,.25)'; ctx.beginPath(); ctx.arc(0,0,22,0,Math.PI*2); ctx.fill(); }
     ctx.restore();
   }
