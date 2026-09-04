@@ -525,7 +525,9 @@ function addChatMsg(entry){
   const el=document.createElement('div');
   el.className=`chat-msg ${entry.scope}`;
   const whisperTag = entry.scope==='whisper' ? `<span style="color:#f9a8d4">[귓속말]</span> ` : '';
-  el.innerHTML=`${whisperTag}<span class="from">${entry.from}:</span> ${escapeHtml(entry.message)} <span style="color:var(--muted);font-size:11px;float:right">${new Date(entry.time).toLocaleTimeString()}</span>`;
+  const safeFrom = escapeHtml(String(entry.from||'Unknown'));
+  const safeMsg = escapeHtml(String(entry.message||''));
+  el.innerHTML=`${whisperTag}<span class="from">${safeFrom}:</span> ${safeMsg} <span style="color:var(--muted);font-size:11px;float:right">${new Date(entry.time).toLocaleTimeString()}</span>`;
   log.appendChild(el);
   log.scrollTop=log.scrollHeight;
   // also ingame log
@@ -533,7 +535,7 @@ function addChatMsg(entry){
   if(ig){ const cl=el.cloneNode(true); ig.appendChild(cl); ig.scrollTop=ig.scrollHeight; if(ig.children.length>50) ig.removeChild(ig.firstChild); }
   if(log.children.length>100) log.removeChild(log.firstChild);
 }
-function escapeHtml(s){ return s.replace(/[&<>"]/g,c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c])); }
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;', "'":'&#39;' }[c])); }
 
 $('#btnChatSend').addEventListener('click', sendChat);
 $('#chatInput').addEventListener('keydown', e=>{ if(e.key==='Enter') sendChat(); });

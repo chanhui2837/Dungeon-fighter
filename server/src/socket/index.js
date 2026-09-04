@@ -402,12 +402,20 @@ export function initSocket(io) {
     // Chat
     socket.on('chat:world', ({ message }) => {
       if (!message || typeof message !== 'string') return;
-      if (message.length > 200) message = message.slice(0,200);
-      // simple spam throttle: 500ms
+      const trimmed = message.trim();
+      if (!trimmed) return;
+      if (trimmed.length > 200) message = trimmed.slice(0,200); else message = trimmed;
       const p = players.get(socket.id);
       const now = Date.now();
       if (p._lastChat && now - p._lastChat < 500) return;
+      // 5초 6개 도배 방지
+      p._chatTimes = (p._chatTimes || []).filter(t=> now - t < 5000);
+      if (p._chatTimes.length >= 6) {
+        socket.emit('chat:error', { message: '도배 방지: 잠시 후 다시 시도하세요' });
+        return;
+      }
       p._lastChat = now;
+      p._chatTimes.push(now);
       const entry = { from: p.username, message, time: now, scope: 'world' };
       chatHistory.world.push(entry);
       if (chatHistory.world.length > 100) chatHistory.world.shift();
@@ -416,10 +424,21 @@ export function initSocket(io) {
     socket.on('chat:party', ({ message }) => {
       const p = players.get(socket.id);
       if (!p?.partyId) return socket.emit('chat:error', { message: '파티가 없습니다' });
-      if (!message) return;
+      if (!message || typeof message !== 'string') return;
+      const trimmed = message.trim();
+      if (!trimmed) return;
+      const now = Date.now();
+      if (p._lastChat && now - p._lastChat < 500) return;
+      p._chatTimes = (p._chatTimes || []).filter(t=> now - t < 5000);
+      if (p._chatTimes.length >= 6) {
+        socket.emit('chat:error', { message: '도배 방지: 잠시 후 다시 시도하세요' });
+        return;
+      }
+      p._lastChat = now;
+      p._chatTimes.push(now);
       const party = parties.get(p.partyId);
       if (!party) return;
-      const entry = { from: p.username, message: message.slice(0,200), time: Date.now(), scope: 'party', partyId: p.partyId };
+      const entry = { from: p.username, message: trimmed.slice(0,200), time: now, scope: 'party', partyId: p.partyId };
       for (const sid of party.members) {
         const mem = players.get(sid);
         if (mem?.socket) mem.socket.emit('chat:party', entry);

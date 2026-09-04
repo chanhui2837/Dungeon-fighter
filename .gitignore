@@ -10,3 +10,6 @@ server/backups/
 client/dist/
 .vscode/
 .idea/
+data/
+Dungeon fighter/
+*.tmp
